@@ -3,250 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Player Editor & Widget</title>
+    <title>Genially Audio Tool</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root {
-            --p-color: #a855f7;
-            --p-grad: linear-gradient(90deg, #9333ea 0%, #a855f7 100%);
-        }
-
-        body, html {
-            margin: 0; padding: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background: transparent;
-            height: 100%;
-        }
-
-        /* --- ЭКРАН РЕДАКТОРА --- */
-        #editor-ui {
-            display: flex;
-            height: 100vh;
-            background: #1a1a1a;
-            color: white;
-        }
-
-        .settings-panel {
-            width: 350px;
-            background: #252525;
-            padding: 25px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
-            z-index: 100;
-        }
-
-        .preview-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: #121212;
-            background-image: radial-gradient(#333 1px, transparent 1px);
-            background-size: 20px 20px;
-        }
-
-        input, select, button {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #444;
-            background: #333;
-            color: white;
-            margin-top: 5px;
-        }
-
-        button.copy-btn {
-            background: #9333ea;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-
-        /* --- САМ ПЛЕЕР (ВИДЖЕТ) --- */
-        .player-card {
-            width: 600px;
-            height: 200px;
-            background: var(--p-grad);
-            border-radius: 25px;
-            padding: 20px;
-            display: flex;
-            color: white;
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .left-panel { flex: 0 0 140px; text-align: center; }
-        .cover-wrapper {
-            width: 110px; height: 110px;
-            border-radius: 50%;
-            border: 4px solid #fff;
-            overflow: hidden;
-            margin: 0 auto;
-        }
-        .cover-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-
-        .right-panel { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; }
-        .track-info h2 { margin: 0; font-size: 22px; }
-        .track-info p { margin: 5px 0; opacity: 0.8; }
-
-        .controls { display: flex; align-items: center; justify-content: space-between; margin-top: 15px; }
-        .progress-bar { width: 100%; height: 5px; background: rgba(255,255,255,0.3); border-radius: 5px; cursor: pointer; margin-top: 10px; }
-        .progress-fill { width: 0%; height: 100%; background: white; border-radius: 5px; }
-
-        #playlist-win {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); border-radius: 25px; display: none; padding: 20px; box-sizing: border-box; overflow-y: auto;
-        }
-
-        /* --- СКРЫТИЕ РЕДАКТОРА В РЕЖИМЕ ВИДЖЕТА --- */
-        body.widget-mode #editor-ui { display: none; }
-        body.widget-mode .player-card { margin: auto; }
+        :root { --p-color: #9333ea; }
+        body, html { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: transparent; height: 100%; overflow: hidden; }
+        
+        /* EDITOR */
+        #editor { display: flex; height: 100vh; background: #111; color: #eee; overflow-y: auto; }
+        .side { width: 320px; background: #1a1a1a; padding: 20px; border-right: 1px solid #333; }
+        .view { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #0b0b0b; }
+        input, select, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #222; color: #fff; }
+        button { background: #9333ea; cursor: pointer; font-weight: bold; border: none; }
+        
+        /* PLAYER */
+        .player { width: 580px; height: 180px; border-radius: 24px; padding: 20px; display: flex; color: white; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transition: 0.3s; }
+        .cover-art { width: 120px; height: 120px; border-radius: 50%; border: 4px solid #fff; overflow: hidden; flex-shrink: 0; background: #333; }
+        .cover-art img { width: 100%; height: 100%; object-fit: cover; }
+        .main-info { flex-grow: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; }
+        .title { font-size: 20px; font-weight: bold; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .status { font-size: 13px; opacity: 0.7; margin: 4px 0 12px; }
+        .progress-wrap { width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; cursor: pointer; position: relative; }
+        .progress-bar { height: 100%; background: #fff; border-radius: 3px; width: 0%; }
+        .controls { display: flex; align-items: center; gap: 20px; margin-top: 15px; }
+        .btn { cursor: pointer; font-size: 18px; transition: 0.2s; opacity: 0.9; }
+        .btn:hover { transform: scale(1.1); opacity: 1; }
+        
+        body.widget #editor { display: none; }
     </style>
 </head>
-<body id="main-body">
+<body id="b">
 
-<div id="editor-ui">
-    <div class="settings-panel">
-        <h2>Редактор плеера</h2>
-        <label>Цвет (HEX): <input type="color" id="set-color" value="#9333ea"></label>
-        <label>Язык интерфейса: 
-            <select id="set-lang">
-                <option value="ru">Русский</option>
-                <option value="en">English</option>
-            </select>
-        </label>
-        <label>Путь к папке (GitHub raw): <input type="text" id="set-path" placeholder="kgbgamelab/audioplayer/main"></label>
-        <label>Ссылка на обложку: <input type="text" id="set-cover" placeholder="URL картинки"></label>
-        
-        <button class="copy-btn" onclick="copyEmbedCode()">Получить код для Genially</button>
-        <div id="status-msg" style="font-size: 12px; color: #aaa; margin-top: 5px; text-align: center;"></div>
+<div id="editor">
+    <div class="side">
+        <h3>Настройки плеера</h3>
+        <label>Цвет темы: <input type="color" id="c" value="#9333ea"></label>
+        <label>GitHub путь (user/repo/branch): <input type="text" id="p" value="kgbgamelab/audioplayer/main"></label>
+        <label>URL обложки: <input type="text" id="i" placeholder="https://..."></label>
+        <button onclick="copyCode()">СКОПИРОВАТЬ КОД ДЛЯ GENIALLY</button>
+        <p id="msg" style="text-align:center; color: #888; font-size: 12px;"></p>
     </div>
-    <div class="preview-panel">
-        <p>Предпросмотр:</p>
-        <div id="preview-container"></div>
+    <div class="view">
+        <div id="prev"></div>
     </div>
 </div>
 
-<div id="player-template" style="display: none;">
-    <div class="player-card">
-        <div class="left-panel">
-            <div class="cover-wrapper"><img class="track-img" src="" alt=""></div>
-        </div>
-        <div class="right-panel">
-            <div class="track-info">
-                <h2 class="track-title">Loading...</h2>
-                <p class="track-artist">Artist</p>
-            </div>
-            <div class="progress-bar" id="p-bar"><div class="progress-fill" id="p-fill"></div></div>
+<div id="player-ui" style="display: none;">
+    <div class="player" id="card">
+        <div class="cover-art"><img id="track-img" src="" alt=""></div>
+        <div class="main-info">
+            <p class="title" id="t">Загрузка...</p>
+            <p class="status" id="s">Инициализация...</p>
+            <div class="progress-wrap" id="pw"><div class="progress-bar" id="pb"></div></div>
             <div class="controls">
-                <i class="fas fa-random btn" id="shuf"></i>
-                <i class="fas fa-step-backward btn" id="prev"></i>
-                <i class="fas fa-play btn" id="play" style="font-size: 30px;"></i>
-                <i class="fas fa-step-forward btn" id="next"></i>
-                <i class="fas fa-list btn" id="list"></i>
+                <i class="fas fa-step-backward btn" onclick="change(-1)"></i>
+                <i class="fas fa-play btn" id="play-btn" style="font-size: 28px;" onclick="toggle()"></i>
+                <i class="fas fa-step-forward btn" onclick="change(1)"></i>
+                <i class="fas fa-random btn" id="shuf-btn" onclick="isShuf=!isShuf; this.style.color=isShuf?'#00f2ff':'#fff'"></i>
             </div>
         </div>
-        <div id="playlist-win"></div>
     </div>
 </div>
 
-<audio id="audio"></audio>
+<audio id="a"></audio>
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const isWidget = urlParams.has('widget');
+    const audio = document.getElementById('a');
+    let tracks = [];
+    let cur = 0;
+    let isShuf = false;
 
-    if (isWidget) {
-        document.body.classList.add('widget-mode');
-        initPlayer(urlParams);
+    // Режим виджета
+    if (urlParams.has('w')) {
+        document.body.classList.add('widget');
+        document.getElementById('player-ui').style.display = 'block';
+        startWidget();
     } else {
-        renderPreview();
-        document.querySelectorAll('input, select').forEach(el => el.oninput = renderPreview);
+        // Режим редактора
+        updatePrev();
+        document.querySelectorAll('input').forEach(i => i.oninput = updatePrev);
     }
 
-    function renderPreview() {
-        const color = document.getElementById('set-color').value;
-        const container = document.getElementById('preview-container');
-        container.innerHTML = document.getElementById('player-template').innerHTML;
-        const card = container.querySelector('.player-card');
-        card.style.background = `linear-gradient(90deg, ${color} 0%, ${adjustColor(color, -20)} 100%)`;
-        const cover = document.getElementById('set-cover').value || 'https://via.placeholder.com/150';
-        container.querySelector('.track-img').src = cover;
+    function updatePrev() {
+        const color = document.getElementById('c').value;
+        const cover = document.getElementById('i').value || 'https://via.placeholder.com/150';
+        const prev = document.getElementById('prev');
+        prev.innerHTML = document.getElementById('player-ui').innerHTML;
+        const card = prev.querySelector('#card');
+        card.style.background = `linear-gradient(135deg, ${color} 0%, ${adjust(color, -30)} 100%)`;
+        prev.querySelector('#track-img').src = cover;
     }
 
-    function copyEmbedCode() {
-        const color = encodeURIComponent(document.getElementById('set-color').value);
-        const lang = document.getElementById('set-lang').value;
-        const path = encodeURIComponent(document.getElementById('set-path').value);
-        const cover = encodeURIComponent(document.getElementById('set-cover').value);
-        
-        const baseUrl = window.location.href.split('?')[0];
-        const finalUrl = `${baseUrl}?widget=true&color=${color}&lang=${lang}&path=${path}&cover=${cover}`;
-        
-        const code = `<iframe src="${finalUrl}" width="620" height="230" frameborder="0" allowtransparency="true" style="background:transparent;"></iframe>`;
-        
+    function copyCode() {
+        const c = encodeURIComponent(document.getElementById('c').value);
+        const p = encodeURIComponent(document.getElementById('p').value);
+        const i = encodeURIComponent(document.getElementById('i').value);
+        const url = `${window.location.href.split('?')[0]}?w=1&c=${c}&p=${p}&i=${i}`;
+        const code = `<iframe src="${url}" width="600" height="220" frameborder="0" allowtransparency="true" style="background:transparent;"></iframe>`;
         navigator.clipboard.writeText(code);
-        document.getElementById('status-msg').innerText = "Код скопирован в буфер обмена!";
+        document.getElementById('msg').innerText = "КОД СКОПИРОВАН!";
     }
 
-    // ЛОГИКА ПЛЕЕРА
-    async function initPlayer(params) {
-        const body = document.getElementById('main-body');
-        body.innerHTML = document.getElementById('player-template').innerHTML;
+    async function startWidget() {
+        const color = urlParams.get('c') || '#9333ea';
+        const path = urlParams.get('p') || '';
+        const cover = urlParams.get('i') || 'https://via.placeholder.com/150';
         
-        const color = params.get('color') || '#9333ea';
-        const card = document.querySelector('.player-card');
-        card.style.background = `linear-gradient(90deg, ${color} 0%, ${adjustColor(color, -20)} 100%)`;
+        document.getElementById('card').style.background = `linear-gradient(135deg, ${color} 0%, ${adjust(color, -30)} 100%)`;
+        document.getElementById('track-img').src = cover;
 
-        const path = params.get('path') || 'kgbgamelab/audioplayer/main';
-        const cover = params.get('cover') || 'https://via.placeholder.com/150';
-        document.querySelector('.track-img').src = cover;
+        if (!path) { setStatus("Ошибка: путь не задан"); return; }
 
-        const audio = document.getElementById('audio');
-        let tracks = [];
-        let cur = 0;
-
-        // Загрузка песен из GitHub
         try {
-            const [user, repo, branch] = path.split('/');
-            const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents?ref=${branch}`);
+            const [u, r, b] = path.split('/');
+            setStatus("Связь с GitHub...");
+            const res = await fetch(`https://api.github.com/repos/${u}/${r}/contents?ref=${b}`);
+            if (!res.ok) throw new Error();
             const files = await res.json();
-            tracks = files.filter(f => f.name.endsWith('.mp3')).map(f => ({name: f.name.replace('.mp3',''), url: f.download_url}));
+            tracks = files.filter(f => f.name.toLowerCase().endsWith('.mp3'))
+                          .map(f => ({ n: f.name.replace('.mp3',''), u: f.download_url }));
             
-            if(tracks.length > 0) loadTrack(0);
-        } catch(e) { console.error("Error loading files"); }
-
-        function loadTrack(i) {
-            cur = i;
-            audio.src = tracks[i].url;
-            document.querySelector('.track-title').innerText = tracks[i].name;
+            if (tracks.length > 0) {
+                load(0);
+                setStatus(`${tracks.length} треков найдено`);
+            } else { setStatus("MP3 файлы не найдены"); }
+        } catch (e) {
+            setStatus("Ошибка доступа к GitHub");
         }
-
-        document.getElementById('play').onclick = () => {
-            if(audio.paused) { audio.play(); document.getElementById('play').className = 'fas fa-pause btn'; }
-            else { audio.pause(); document.getElementById('play').className = 'fas fa-play btn'; }
-        };
-
-        document.getElementById('next').onclick = () => { cur = (cur+1)%tracks.length; loadTrack(cur); audio.play(); };
-        document.getElementById('prev').onclick = () => { cur = (cur-1+tracks.length)%tracks.length; loadTrack(cur); audio.play(); };
-
-        audio.ontimeupdate = () => {
-            document.getElementById('p-fill').style.width = (audio.currentTime / audio.duration * 100) + '%';
-        };
-
-        document.getElementById('list').onclick = () => {
-            const win = document.getElementById('playlist-win');
-            win.style.display = win.style.display === 'block' ? 'none' : 'block';
-            win.innerHTML = '<h3>Playlist</h3>' + tracks.map((t,i) => `<div onclick="window.location.reload(); /* simplified selection */">${t.name}</div>`).join('');
-        };
     }
 
-    function adjustColor(hex, percent) {
-        var num = parseInt(hex.replace("#",""),16), amt = Math.round(2.55 * percent), R = (num >> 16) + amt, G = (num >> 8 & 0x00FF) + amt, B = (num & 0x0000FF) + amt;
-        return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
+    function setStatus(txt) { document.getElementById('s').innerText = txt; }
+
+    function load(i) {
+        cur = i;
+        audio.src = tracks[i].u;
+        document.getElementById('t').innerText = tracks[i].n;
+        audio.load();
+    }
+
+    function toggle() {
+        if (audio.paused) {
+            audio.play().catch(() => alert("Нажмите еще раз (защита браузера)"));
+            document.getElementById('play-btn').className = 'fas fa-pause btn';
+        } else {
+            audio.pause();
+            document.getElementById('play-btn').className = 'fas fa-play btn';
+        }
+    }
+
+    function change(d) {
+        cur = isShuf ? Math.floor(Math.random()*tracks.length) : (cur+d+tracks.length)%tracks.length;
+        load(cur);
+        audio.play();
+        document.getElementById('play-btn').className = 'fas fa-pause btn';
+    }
+
+    audio.ontimeupdate = () => {
+        document.getElementById('pb').style.width = (audio.currentTime/audio.duration*100)+'%';
+    };
+
+    document.getElementById('pw').onclick = (e) => {
+        const rect = document.getElementById('pw').getBoundingClientRect();
+        audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+    };
+
+    function adjust(hex, amt) {
+        var col = hex.replace('#','');
+        var res = parseInt(col,16);
+        var r = (res >> 16) + amt, g = (res >> 8 & 0x00FF) + amt, b = (res & 0x0000FF) + amt;
+        r = r<0?0:r>255?255:r; g = g<0?0:g>255?255:g; b = b<0?0:b>255?255:b;
+        return "#" + (g | (r << 8) | (b >> 8)).toString(16).padStart(6, '0');
     }
 </script>
 </body>
