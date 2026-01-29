@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Player Editor & Widget</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --p-color: #a855f7;
+            --p-grad: linear-gradient(90deg, #9333ea 0%, #a855f7 100%);
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: transparent;
+            height: 100%;
+        }
+
+        /* --- ЭКРАН РЕДАКТОРА --- */
+        #editor-ui {
+            display: flex;
+            height: 100vh;
+            background: #1a1a1a;
+            color: white;
+        }
+
+        .settings-panel {
+            width: 350px;
+            background: #252525;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #121212;
+            background-image: radial-gradient(#333 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #333;
+            color: white;
+            margin-top: 5px;
+        }
+
+        button.copy-btn {
+            background: #9333ea;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        /* --- САМ ПЛЕЕР (ВИДЖЕТ) --- */
+        .player-card {
+            width: 600px;
+            height: 200px;
+            background: var(--p-grad);
+            border-radius: 25px;
+            padding: 20px;
+            display: flex;
+            color: white;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .left-panel { flex: 0 0 140px; text-align: center; }
+        .cover-wrapper {
+            width: 110px; height: 110px;
+            border-radius: 50%;
+            border: 4px solid #fff;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+        .cover-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+
+        .right-panel { flex: 1; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; }
+        .track-info h2 { margin: 0; font-size: 22px; }
+        .track-info p { margin: 5px 0; opacity: 0.8; }
+
+        .controls { display: flex; align-items: center; justify-content: space-between; margin-top: 15px; }
+        .progress-bar { width: 100%; height: 5px; background: rgba(255,255,255,0.3); border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        .progress-fill { width: 0%; height: 100%; background: white; border-radius: 5px; }
+
+        #playlist-win {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); border-radius: 25px; display: none; padding: 20px; box-sizing: border-box; overflow-y: auto;
+        }
+
+        /* --- СКРЫТИЕ РЕДАКТОРА В РЕЖИМЕ ВИДЖЕТА --- */
+        body.widget-mode #editor-ui { display: none; }
+        body.widget-mode .player-card { margin: auto; }
+    </style>
+</head>
+<body id="main-body">
+
+<div id="editor-ui">
+    <div class="settings-panel">
+        <h2>Редактор плеера</h2>
+        <label>Цвет (HEX): <input type="color" id="set-color" value="#9333ea"></label>
+        <label>Язык интерфейса: 
+            <select id="set-lang">
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+            </select>
+        </label>
+        <label>Путь к папке (GitHub raw): <input type="text" id="set-path" placeholder="kgbgamelab/audioplayer/main"></label>
+        <label>Ссылка на обложку: <input type="text" id="set-cover" placeholder="URL картинки"></label>
+        
+        <button class="copy-btn" onclick="copyEmbedCode()">Получить код для Genially</button>
+        <div id="status-msg" style="font-size: 12px; color: #aaa; margin-top: 5px; text-align: center;"></div>
+    </div>
+    <div class="preview-panel">
+        <p>Предпросмотр:</p>
+        <div id="preview-container"></div>
+    </div>
+</div>
+
+<div id="player-template" style="display: none;">
+    <div class="player-card">
+        <div class="left-panel">
+            <div class="cover-wrapper"><img class="track-img" src="" alt=""></div>
+        </div>
+        <div class="right-panel">
+            <div class="track-info">
+                <h2 class="track-title">Loading...</h2>
+                <p class="track-artist">Artist</p>
+            </div>
+            <div class="progress-bar" id="p-bar"><div class="progress-fill" id="p-fill"></div></div>
+            <div class="controls">
+                <i class="fas fa-random btn" id="shuf"></i>
+                <i class="fas fa-step-backward btn" id="prev"></i>
+                <i class="fas fa-play btn" id="play" style="font-size: 30px;"></i>
+                <i class="fas fa-step-forward btn" id="next"></i>
+                <i class="fas fa-list btn" id="list"></i>
+            </div>
+        </div>
+        <div id="playlist-win"></div>
+    </div>
+</div>
+
+<audio id="audio"></audio>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const isWidget = urlParams.has('widget');
+
+    if (isWidget) {
+        document.body.classList.add('widget-mode');
+        initPlayer(urlParams);
+    } else {
+        renderPreview();
+        document.querySelectorAll('input, select').forEach(el => el.oninput = renderPreview);
+    }
+
+    function renderPreview() {
+        const color = document.getElementById('set-color').value;
+        const container = document.getElementById('preview-container');
+        container.innerHTML = document.getElementById('player-template').innerHTML;
+        const card = container.querySelector('.player-card');
+        card.style.background = `linear-gradient(90deg, ${color} 0%, ${adjustColor(color, -20)} 100%)`;
+        const cover = document.getElementById('set-cover').value || 'https://via.placeholder.com/150';
+        container.querySelector('.track-img').src = cover;
+    }
+
+    function copyEmbedCode() {
+        const color = encodeURIComponent(document.getElementById('set-color').value);
+        const lang = document.getElementById('set-lang').value;
+        const path = encodeURIComponent(document.getElementById('set-path').value);
+        const cover = encodeURIComponent(document.getElementById('set-cover').value);
+        
+        const baseUrl = window.location.href.split('?')[0];
+        const finalUrl = `${baseUrl}?widget=true&color=${color}&lang=${lang}&path=${path}&cover=${cover}`;
+        
+        const code = `<iframe src="${finalUrl}" width="620" height="230" frameborder="0" allowtransparency="true" style="background:transparent;"></iframe>`;
+        
+        navigator.clipboard.writeText(code);
+        document.getElementById('status-msg').innerText = "Код скопирован в буфер обмена!";
+    }
+
+    // ЛОГИКА ПЛЕЕРА
+    async function initPlayer(params) {
+        const body = document.getElementById('main-body');
+        body.innerHTML = document.getElementById('player-template').innerHTML;
+        
+        const color = params.get('color') || '#9333ea';
+        const card = document.querySelector('.player-card');
+        card.style.background = `linear-gradient(90deg, ${color} 0%, ${adjustColor(color, -20)} 100%)`;
+
+        const path = params.get('path') || 'kgbgamelab/audioplayer/main';
+        const cover = params.get('cover') || 'https://via.placeholder.com/150';
+        document.querySelector('.track-img').src = cover;
+
+        const audio = document.getElementById('audio');
+        let tracks = [];
+        let cur = 0;
+
+        // Загрузка песен из GitHub
+        try {
+            const [user, repo, branch] = path.split('/');
+            const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents?ref=${branch}`);
+            const files = await res.json();
+            tracks = files.filter(f => f.name.endsWith('.mp3')).map(f => ({name: f.name.replace('.mp3',''), url: f.download_url}));
+            
+            if(tracks.length > 0) loadTrack(0);
+        } catch(e) { console.error("Error loading files"); }
+
+        function loadTrack(i) {
+            cur = i;
+            audio.src = tracks[i].url;
+            document.querySelector('.track-title').innerText = tracks[i].name;
+        }
+
+        document.getElementById('play').onclick = () => {
+            if(audio.paused) { audio.play(); document.getElementById('play').className = 'fas fa-pause btn'; }
+            else { audio.pause(); document.getElementById('play').className = 'fas fa-play btn'; }
+        };
+
+        document.getElementById('next').onclick = () => { cur = (cur+1)%tracks.length; loadTrack(cur); audio.play(); };
+        document.getElementById('prev').onclick = () => { cur = (cur-1+tracks.length)%tracks.length; loadTrack(cur); audio.play(); };
+
+        audio.ontimeupdate = () => {
+            document.getElementById('p-fill').style.width = (audio.currentTime / audio.duration * 100) + '%';
+        };
+
+        document.getElementById('list').onclick = () => {
+            const win = document.getElementById('playlist-win');
+            win.style.display = win.style.display === 'block' ? 'none' : 'block';
+            win.innerHTML = '<h3>Playlist</h3>' + tracks.map((t,i) => `<div onclick="window.location.reload(); /* simplified selection */">${t.name}</div>`).join('');
+        };
+    }
+
+    function adjustColor(hex, percent) {
+        var num = parseInt(hex.replace("#",""),16), amt = Math.round(2.55 * percent), R = (num >> 16) + amt, G = (num >> 8 & 0x00FF) + amt, B = (num & 0x0000FF) + amt;
+        return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
+    }
+</script>
+</body>
+</html>
